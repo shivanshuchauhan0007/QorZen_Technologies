@@ -1,12 +1,21 @@
 import Contact from "../models/Contact.js";
+import { sendContactNotificationEmail } from "../utils/sendEmail.js";
 
 // @desc   Submit a contact form (public)
 // @route  POST /api/contacts
 export const createContact = async (req, res, next) => {
   try {
-    const { name, email, phone, subject, message } = req.body;
+    const { name, email, phone, subject, service, message } = req.body;
 
-    const contact = await Contact.create({ name, email, phone, subject, message });
+    const contact = await Contact.create({ name, email, phone, subject, service, message });
+
+    // Fire off the email notification, but never let an SMTP hiccup fail
+    // the enquiry itself — it's already safely saved above.
+    try {
+      await sendContactNotificationEmail({ name, email, phone, subject, service, message });
+    } catch (emailError) {
+      console.error("Failed to send contact notification email:", emailError);
+    }
 
     res.status(201).json({
       success: true,

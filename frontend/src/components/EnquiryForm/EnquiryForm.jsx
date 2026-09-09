@@ -13,6 +13,7 @@ import {
   Tag
 } from 'lucide-react';
 import './EnquiryForm.css';
+import { submitContactForm } from '../../api/publicApi';
 
 // Subject options for backend sorting & lead categorization
 const subjectOptions = [
@@ -60,19 +61,29 @@ const EnquiryForm = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError('');
 
-    // Simulate async backend API payload submission with subject metadata
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // Backend expects `name`, the form tracks it as `fullName`
+      await submitContactForm({
+        name: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        subject: formData.subject,
+        service: formData.service,
+        message: formData.message
+      });
+
       setIsSubmitted(true);
       setFormData({
         fullName: '',
@@ -82,7 +93,13 @@ const EnquiryForm = ({
         service: serviceOptions[0],
         message: ''
       });
-    }, 1000);
+    } catch (error) {
+      setSubmitError(
+        error?.response?.data?.message || 'Something went wrong while submitting your enquiry. Please try again.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -247,6 +264,12 @@ const EnquiryForm = ({
                     ></textarea>
                   </div>
                 </div>
+
+                {submitError && (
+                  <p className="enquiry-error-text" role="alert" style={{ color: '#dc2626', fontSize: '0.875rem', margin: '4px 0 0' }}>
+                    {submitError}
+                  </p>
+                )}
 
                 <button
                   type="submit"

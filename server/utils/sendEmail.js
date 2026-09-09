@@ -23,7 +23,7 @@ const getTransporter = () => {
 /**
  * Sends an email. Usage: sendEmail({ to, subject, html, text })
  */
-export const sendEmail = async ({ to, subject, html, text }) => {
+export const sendEmail = async ({ to, subject, html, text, replyTo }) => {
   const mailer = getTransporter();
 
   await mailer.sendMail({
@@ -32,6 +32,7 @@ export const sendEmail = async ({ to, subject, html, text }) => {
     subject,
     text,
     html,
+    ...(replyTo ? { replyTo } : {}),
   });
 };
 
@@ -69,6 +70,64 @@ export const sendPasswordChangedEmail = async ({ to, name }) => {
       </div>
     `,
     text: `Your QorZen account password was just changed. If this wasn't you, contact support immediately.`,
+  });
+};
+
+// Every enquiry / contact form submission on the site gets forwarded here so
+// the team sees it as a normal email, in addition to it being saved in the DB.
+const CONTACT_NOTIFY_EMAIL = process.env.CONTACT_NOTIFY_EMAIL || "qorzentechnologies@gmail.com";
+
+const escapeHtml = (value = "") =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+export const sendContactNotificationEmail = async ({ name, email, phone, subject, service, message }) => {
+  const rows = [
+    ["Name", name],
+    ["Email", email],
+    ["Phone", phone],
+    ["Subject / Lead Category", subject],
+    ["Service / Area of Interest", service],
+  ]
+    .filter(([, value]) => value)
+    .map(
+      ([label, value]) => `
+        <tr>
+          <td style="padding:6px 12px;color:#78716c;font-weight:600;white-space:nowrap;">${escapeHtml(label)}</td>
+          <td style="padding:6px 12px;">${escapeHtml(value)}</td>
+        </tr>`
+    )
+    .join("");
+
+  await sendEmail({
+    to: CONTACT_NOTIFY_EMAIL,
+    subject: `New Enquiry: ${subject || "General Inquiry"} — ${name}`,
+    replyTo: email,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: auto;">
+        <h2>New enquiry from the website</h2>
+        <table style="border-collapse:collapse;width:100%;">${rows}</table>
+        <p style="margin-top:20px;"><strong>Message:</strong></p>
+        <p style="white-space:pre-wrap;background:#f5f5f4;padding:12px;border-radius:6px;">${escapeHtml(message)}</p>
+      </div>
+    `,
+    text: [
+      "New enquiry from the website",
+      name && `Name: ${name}`,
+      email && `Email: ${email}`,
+      phone && `Phone: ${phone}`,
+      subject && `Subject: ${subject}`,
+      service && `Service: ${service}`,
+      "",
+      "Message:",
+      message,
+    ]
+      .filter(Boolean)
+      .join("\n"),
   });
 };
 

@@ -5,4 +5,7 @@ export const validateCreateContact = [
   body("email").trim().notEmpty().withMessage("Email is required")
     .isEmail().withMessage("Please enter a valid email"),
   body("message").trim().notEmpty().withMessage("Message is required"),
+  body("phone").optional({ checkFalsy: true }).trim(),
+  body("subject").optional({ checkFalsy: true }).trim(),
+  body("service").optional({ checkFalsy: true }).trim(),
 ];
